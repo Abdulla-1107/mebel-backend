@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class OrderService {
@@ -10,9 +11,33 @@ export class OrderService {
     private readonly prisma: PrismaService,
     private readonly telegram: TelegramService,
   ) {}
-
   async create(createOrderDto: CreateOrderDto) {
-    // 🟢 1. Order yaratish
+    // 1️⃣ Barcha productlarni olish
+    const productIds = createOrderDto.items.map((item) => item.productId);
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+    });
+
+    // 2️⃣ Productlarni map ga o‘tkazish (O(1) lookup)
+    const productMap: Record<string, { price: number; name_uz: string }> = {};
+    products.forEach((p) => {
+      productMap[p.id] = { price: Number(p.price), name_uz: p.name_uz };
+    });
+
+    // 3️⃣ OrderItem data va totalPrice hisoblash
+    let totalPrice = 0;
+    const orderItemsData = createOrderDto.items.map((item) => {
+      const product = productMap[item.productId];
+      const itemTotal = product.price * item.quantity;
+      totalPrice += itemTotal;
+
+      return {
+        productId: item.productId,
+        quantity: item.quantity,
+      };
+    });
+
+    // 4️⃣ Order yaratish
     const order = await this.prisma.order.create({
       data: {
         fullName: createOrderDto.fullName,
@@ -20,18 +45,15 @@ export class OrderService {
         address: createOrderDto.address,
         email: createOrderDto.email,
         oferta: createOrderDto.oferta,
-        totalPrice: createOrderDto.totalPrice,
+        totalPrice, // backend avtomatik hisoblagan Int
         OrderItem: {
-          create: createOrderDto.items.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-          })),
+          create: orderItemsData,
         },
       },
       include: { OrderItem: { include: { Product: true } } },
     });
 
-    // 🟣 2. Telegramga xabar yuborish
+    // 5️⃣ Telegramga xabar yuborish
     const orderText = `
 🆕 <b>Yangi buyurtma!</b>
 👤 Ism: ${order.fullName}
