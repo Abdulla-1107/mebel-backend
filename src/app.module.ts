@@ -7,9 +7,10 @@ import { OrderModule } from './order/order.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { UploadModule } from './upload/upload.module';
 import { ContactModule } from './contact/contact.module';
+import { CategoryModule } from './category/category.module';
 
 @Module({
-  imports: [ProductModule, OrderModule, TelegramModule, UploadModule, ContactModule],
+  imports: [ProductModule, OrderModule, TelegramModule, UploadModule, ContactModule, CategoryModule],
   controllers: [AppController],
   providers: [AppService, PrismaService],
 })
