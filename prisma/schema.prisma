@@ -1,10 +1,11 @@
-generator client {
-  provider = "prisma-client-js"
+datasource db {
+  provider = "sqlite"
 }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 model Product {
@@ -15,7 +16,7 @@ model Product {
   description_uz String
   description_ru String
   description_en String
-  price          Decimal     @db.Decimal(10, 2)
+  price          Decimal
   image          String
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
